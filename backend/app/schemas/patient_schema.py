@@ -1,88 +1,79 @@
-from marshmallow import Schema, fields, validate, EXCLUDE
+from __future__ import annotations
+from uuid import UUID
+from datetime import datetime, date
+from decimal import Decimal
+from typing import Optional, List
+from pydantic import BaseModel, EmailStr, field_validator
 
 
-class UserBasicSchema(Schema):
-    """Minimal user info embedded inside patient responses."""
+class UserBasicSchema(BaseModel):
+    id: UUID
+    email: EmailStr
+    first_name: str
+    last_name: str
+    phone: Optional[str] = None
+    avatar_url: Optional[str] = None
+    role: str
+    is_active: bool
 
-    class Meta:
-        unknown = EXCLUDE
-
-    id = fields.UUID(dump_only=True)
-    email = fields.Email(dump_only=True)
-    first_name = fields.Str(dump_only=True)
-    last_name = fields.Str(dump_only=True)
-    phone = fields.Str(dump_only=True, allow_none=True)
-    avatar_url = fields.Str(dump_only=True, allow_none=True)
-    role = fields.Str(dump_only=True)
-    is_active = fields.Bool(dump_only=True)
+    model_config = {"from_attributes": True}
 
 
-class PatientProfileSchema(Schema):
-    """Full patient profile — used for GET /patients/:id responses."""
+class PatientProfileSchema(BaseModel):
+    """Response schema for a full patient profile."""
+    id: UUID
+    user_id: UUID
+    date_of_birth: date
+    gender: Optional[str] = None
+    blood_type: Optional[str] = None
+    height_cm: Optional[Decimal] = None
+    weight_kg: Optional[Decimal] = None
+    emergency_contact_name: Optional[str] = None
+    emergency_contact_phone: Optional[str] = None
+    insurance_provider: Optional[str] = None
+    insurance_policy_number: Optional[str] = None
+    primary_physician_id: Optional[UUID] = None
+    created_at: datetime
+    updated_at: datetime
+    user: UserBasicSchema
 
-    class Meta:
-        unknown = EXCLUDE
-
-    id = fields.UUID(dump_only=True)
-    user_id = fields.UUID(dump_only=True)
-    date_of_birth = fields.Date(dump_only=True)
-    gender = fields.Str(dump_only=True, allow_none=True)
-    blood_type = fields.Str(dump_only=True, allow_none=True)
-    height_cm = fields.Decimal(dump_only=True, allow_none=True, as_string=True)
-    weight_kg = fields.Decimal(dump_only=True, allow_none=True, as_string=True)
-    emergency_contact_name = fields.Str(dump_only=True, allow_none=True)
-    emergency_contact_phone = fields.Str(dump_only=True, allow_none=True)
-    insurance_provider = fields.Str(dump_only=True, allow_none=True)
-    insurance_policy_number = fields.Str(dump_only=True, allow_none=True)
-    primary_physician_id = fields.UUID(dump_only=True, allow_none=True)
-    created_at = fields.DateTime(dump_only=True)
-    updated_at = fields.DateTime(dump_only=True)
-
-    # Nested user info (joined)
-    user = fields.Nested(UserBasicSchema, dump_only=True)
+    model_config = {"from_attributes": True}
 
 
-class PatientUpdateSchema(Schema):
-    """Accepted fields for PUT /patients/:id."""
+class PatientUpdateSchema(BaseModel):
+    """Request body for PUT /patients/:id."""
+    gender: Optional[str] = None
+    blood_type: Optional[str] = None
+    height_cm: Optional[Decimal] = None
+    weight_kg: Optional[Decimal] = None
+    emergency_contact_name: Optional[str] = None
+    emergency_contact_phone: Optional[str] = None
+    insurance_provider: Optional[str] = None
+    insurance_policy_number: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
 
-    class Meta:
-        unknown = EXCLUDE
+    @field_validator("gender")
+    @classmethod
+    def validate_gender(cls, v: Optional[str]) -> Optional[str]:
+        allowed = {"male", "female", "other", "prefer_not_to_say"}
+        if v is not None and v not in allowed:
+            raise ValueError(f"gender must be one of {allowed}")
+        return v
 
-    gender = fields.Str(
-        validate=validate.OneOf(["male", "female", "other", "prefer_not_to_say"]),
-        load_default=None,
-    )
-    blood_type = fields.Str(
-        validate=validate.OneOf(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]),
-        load_default=None,
-    )
-    height_cm = fields.Decimal(places=2, load_default=None)
-    weight_kg = fields.Decimal(places=2, load_default=None)
-    emergency_contact_name = fields.Str(
-        validate=validate.Length(max=200), load_default=None
-    )
-    emergency_contact_phone = fields.Str(
-        validate=validate.Length(max=20), load_default=None
-    )
-    insurance_provider = fields.Str(
-        validate=validate.Length(max=200), load_default=None
-    )
-    insurance_policy_number = fields.Str(
-        validate=validate.Length(max=100), load_default=None
-    )
-    # User-level fields patients can update
-    first_name = fields.Str(validate=validate.Length(min=1, max=100), load_default=None)
-    last_name = fields.Str(validate=validate.Length(min=1, max=100), load_default=None)
-    phone = fields.Str(validate=validate.Length(max=20), load_default=None)
+    @field_validator("blood_type")
+    @classmethod
+    def validate_blood_type(cls, v: Optional[str]) -> Optional[str]:
+        allowed = {"A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"}
+        if v is not None and v not in allowed:
+            raise ValueError(f"blood_type must be one of {allowed}")
+        return v
 
 
-class PatientListSchema(Schema):
-    """Shape of GET /patients list response."""
-
-    class Meta:
-        unknown = EXCLUDE
-
-    patients = fields.List(fields.Nested(PatientProfileSchema))
-    total = fields.Int()
-    page = fields.Int()
-    per_page = fields.Int()
+class PatientListSchema(BaseModel):
+    """Response schema for GET /patients."""
+    patients: List[PatientProfileSchema]
+    total: int
+    page: int
+    per_page: int

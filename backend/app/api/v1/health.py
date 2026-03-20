@@ -1,9 +1,9 @@
-from flask import Blueprint, jsonify
+from fastapi import APIRouter
 
-health_bp = Blueprint("health", __name__, url_prefix="/health")
+router = APIRouter(prefix="/health", tags=["Health"])
 
 
-@health_bp.route("", methods=["GET"])
+@router.get("")
 def health_check():
-    """Basic health check endpoint."""
-    return jsonify({"status": "ok", "version": "1.0"}), 200
+    """Basic health check — no auth required."""
+    return {"status": "ok", "version": "1.0"}

@@ -1,39 +1,46 @@
 import uuid
 from datetime import datetime
-from app.extensions import db
+from sqlalchemy import String, Boolean, DateTime
+from sqlalchemy.orm import relationship, mapped_column, Mapped
+from sqlalchemy.dialects.postgresql import UUID
+from app.database import Base
 
 
-class User(db.Model):
+class User(Base):
     __tablename__ = "users"
 
-    id = db.Column(db.UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    email = db.Column(db.String(255), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(
-        db.String(20),
-        nullable=False,
-        # patient | doctor | admin | nurse
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    first_name = db.Column(db.String(100), nullable=False)
-    last_name = db.Column(db.String(100), nullable=False)
-    phone = db.Column(db.String(20))
-    avatar_url = db.Column(db.Text)
-    is_active = db.Column(db.Boolean, default=True)
-    is_verified = db.Column(db.Boolean, default=False)
-    mfa_enabled = db.Column(db.Boolean, default=False)
-    mfa_secret = db.Column(db.String(255))
-    last_login_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), nullable=False)
+    first_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    phone: Mapped[str | None] = mapped_column(String(20))
+    avatar_url: Mapped[str | None] = mapped_column(String)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    mfa_secret: Mapped[str | None] = mapped_column(String(255))
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     # Relationships
-    patient_profile = db.relationship(
-        "PatientProfile", back_populates="user", uselist=False
+    patient_profile = relationship(
+        "PatientProfile",
+        back_populates="user",
+        uselist=False,
+        foreign_keys="PatientProfile.user_id",
     )
-    doctor_profile = db.relationship(
-        "DoctorProfile", back_populates="user", uselist=False
+    doctor_profile = relationship(
+        "DoctorProfile",
+        back_populates="user",
+        uselist=False,
+        foreign_keys="DoctorProfile.user_id",
     )
 
     @property

@@ -1,10 +1,10 @@
-from flask import Blueprint
-from app.api.v1.patients import patients_bp
-from app.api.v1.doctors import doctors_bp
-from app.api.v1.health import health_bp
+from fastapi import APIRouter
+from app.api.v1.patients import router as patients_router
+from app.api.v1.doctors import router as doctors_router
+from app.api.v1.health import router as health_router
 
-v1_bp = Blueprint("v1", __name__, url_prefix="/v1")
+v1_router = APIRouter(prefix="/v1")
 
-v1_bp.register_blueprint(patients_bp)
-v1_bp.register_blueprint(doctors_bp)
-v1_bp.register_blueprint(health_bp)
+v1_router.include_router(patients_router)
+v1_router.include_router(doctors_router)
+v1_router.include_router(health_router)

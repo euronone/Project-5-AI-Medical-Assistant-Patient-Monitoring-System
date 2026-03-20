@@ -1,68 +1,47 @@
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
+from pydantic_settings import BaseSettings
+from functools import lru_cache
 
 
-def _build_db_uri() -> str:
-    """
-    Build the SQLAlchemy database URI.
-    Supabase provides a connection string starting with 'postgres://'
-    but SQLAlchemy requires 'postgresql://'. This function normalises it.
-    """
-    url = os.environ.get(
-        "DATABASE_URL",
-        "postgresql://user:pass@localhost:5432/medassist",
-    )
-    # Supabase sometimes returns 'postgres://' — SQLAlchemy needs 'postgresql://'
-    if url.startswith("postgres://"):
-        url = url.replace("postgres://", "postgresql://", 1)
-    return url
+class Settings(BaseSettings):
+    # Flask → FastAPI: no SECRET_KEY needed for sessions, only JWT
+    SECRET_KEY: str = "dev-secret-key"
+    JWT_SECRET_KEY: str = "dev-jwt-secret"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # Database — Supabase PostgreSQL
+    DATABASE_URL: str = "postgresql://user:pass@localhost:5432/medassist"
+
+    # Redis / Celery
+    REDIS_URL: str = "redis://localhost:6379/0"
+    CELERY_BROKER_URL: str = "redis://localhost:6379/1"
+    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
+
+    # OpenAI
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL_PRIMARY: str = "gpt-4o"
+    OPENAI_MODEL_FAST: str = "gpt-4o-mini"
+    OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-large"
+
+    # App
+    APP_ENV: str = "development"
+    DEBUG: bool = True
+
+    @property
+    def database_url_fixed(self) -> str:
+        """Supabase returns postgres:// — SQLAlchemy needs postgresql://"""
+        url = self.DATABASE_URL
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        return url
+
+    model_config = {"env_file": ".env", "case_sensitive": True}
 
 
-class Config:
-    SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key")
-    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "dev-jwt-secret")
-    SQLALCHEMY_DATABASE_URI = _build_db_uri()
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-
-    # Supabase requires SSL — these engine options enforce it
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        "connect_args": {
-            "sslmode": "require",
-        },
-        "pool_pre_ping": True,       # Detect dropped connections
-        "pool_size": 5,
-        "max_overflow": 10,
-        "pool_recycle": 300,         # Recycle connections every 5 minutes
-    }
-
-    REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-    CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/1")
-    CELERY_RESULT_BACKEND = os.environ.get(
-        "CELERY_RESULT_BACKEND", "redis://localhost:6379/2"
-    )
-    JWT_ACCESS_TOKEN_EXPIRES = 900       # 15 minutes
-    JWT_REFRESH_TOKEN_EXPIRES = 604800   # 7 days
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
 
 
-class DevelopmentConfig(Config):
-    DEBUG = True
-
-
-class ProductionConfig(Config):
-    DEBUG = False
-
-
-class TestingConfig(Config):
-    TESTING = True
-    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
-    # No SSL needed for in-memory SQLite
-    SQLALCHEMY_ENGINE_OPTIONS = {}
-
-
-config_map = {
-    "development": DevelopmentConfig,
-    "production": ProductionConfig,
-    "testing": TestingConfig,
-}
+settings = get_settings()

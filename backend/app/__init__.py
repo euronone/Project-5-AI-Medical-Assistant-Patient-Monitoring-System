@@ -1,22 +1,27 @@
-from flask import Flask
-from app.config import config_map
-from app.extensions import db, migrate, jwt, socketio, cors
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.api.v1 import v1_router
 
 
-def create_app(env: str = "development") -> Flask:
-    app = Flask(__name__)
-    app.config.from_object(config_map[env])
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title="MedAssist AI",
+        description="AI Medical Assistant & Patient Monitoring System",
+        version="1.0.0",
+        docs_url="/api/docs",
+        redoc_url="/api/redoc",
+        openapi_url="/api/openapi.json",
+    )
 
-    # Initialize extensions
-    db.init_app(app)
-    migrate.init_app(app, db)
-    jwt.init_app(app)
-    cors.init_app(app, resources={r"/api/*": {"origins": "*"}})
-    socketio.init_app(app, cors_allowed_origins="*")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-    # Register blueprints
-    from app.api import api_bp
-    app.register_blueprint(api_bp)
+    app.include_router(v1_router, prefix="/api")
 
     # Import models so Alembic can detect them
     from app.models import User, PatientProfile, DoctorProfile  # noqa: F401

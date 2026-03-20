@@ -12,8 +12,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 import bcrypt
 from datetime import date
-from app import create_app
-from app.extensions import db
+from app.database import SessionLocal, engine, Base
 from app.models.user import User
 from app.models.patient import PatientProfile
 from app.models.doctor import DoctorProfile
@@ -144,32 +143,38 @@ ADMIN = {
 
 
 def seed():
-    app = create_app("development")
-    with app.app_context():
-        print("Creating tables if they don't exist (Supabase)...")
-        db.create_all()
+    print("Creating tables if they don't exist (Supabase)...")
+    Base.metadata.create_all(bind=engine)
 
+    db = SessionLocal()
+    try:
         default_password = hash_password("MedAssist@123")
 
         # Seed admin
         print("Seeding admin...")
-        admin_user = User(
-            email=ADMIN["email"],
-            password_hash=default_password,
-            role=ADMIN["role"],
-            first_name=ADMIN["first_name"],
-            last_name=ADMIN["last_name"],
-            phone=ADMIN["phone"],
-            is_active=True,
-            is_verified=True,
-        )
-        db.session.add(admin_user)
-        db.session.flush()
+        if not db.query(User).filter_by(email=ADMIN["email"]).first():
+            admin_user = User(
+                email=ADMIN["email"],
+                password_hash=default_password,
+                role=ADMIN["role"],
+                first_name=ADMIN["first_name"],
+                last_name=ADMIN["last_name"],
+                phone=ADMIN["phone"],
+                is_active=True,
+                is_verified=True,
+            )
+            db.add(admin_user)
+            db.flush()
 
         # Seed doctors
         print("Seeding doctors...")
         doctor_users = []
         for doc_data in DOCTORS:
+            existing = db.query(User).filter_by(email=doc_data["email"]).first()
+            if existing:
+                doctor_users.append(existing)
+                continue
+
             user = User(
                 email=doc_data["email"],
                 password_hash=default_password,
@@ -180,19 +185,22 @@ def seed():
                 is_active=True,
                 is_verified=True,
             )
-            db.session.add(user)
-            db.session.flush()
+            db.add(user)
+            db.flush()
 
             profile = DoctorProfile(user_id=user.id, **doc_data["profile"])
-            db.session.add(profile)
+            db.add(profile)
             doctor_users.append(user)
 
-        db.session.flush()
+        db.flush()
 
-        # Seed patients — assign to first doctor by default
+        # Seed patients — assign to first doctor
         print("Seeding patients...")
         primary_physician = doctor_users[0]
         for pat_data in PATIENTS:
+            if db.query(User).filter_by(email=pat_data["email"]).first():
+                continue
+
             user = User(
                 email=pat_data["email"],
                 password_hash=default_password,
@@ -203,17 +211,17 @@ def seed():
                 is_active=True,
                 is_verified=True,
             )
-            db.session.add(user)
-            db.session.flush()
+            db.add(user)
+            db.flush()
 
             profile = PatientProfile(
                 user_id=user.id,
                 primary_physician_id=primary_physician.id,
                 **pat_data["profile"],
             )
-            db.session.add(profile)
+            db.add(profile)
 
-        db.session.commit()
+        db.commit()
         print("\nSeeding complete!")
         print("Default password for all accounts: MedAssist@123")
         print(f"Admin:   {ADMIN['email']}")
@@ -221,6 +229,13 @@ def seed():
             print(f"Doctor:  {d['email']}")
         for p in PATIENTS:
             print(f"Patient: {p['email']}")
+
+    except Exception as e:
+        db.rollback()
+        print(f"Seeding failed: {e}")
+        raise
+    finally:
+        db.close()
 
 
 if __name__ == "__main__":
