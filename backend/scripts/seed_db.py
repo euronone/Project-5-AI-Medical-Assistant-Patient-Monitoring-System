@@ -146,8 +146,7 @@ ADMIN = {
 def seed():
     app = create_app("development")
     with app.app_context():
-        print("Dropping and recreating all tables...")
-        db.drop_all()
+        print("Creating tables if they don't exist (Supabase)...")
         db.create_all()
 
         default_password = hash_password("MedAssist@123")
