@@ -64,12 +64,16 @@ def _register_blueprints(app: Flask) -> None:
     from app.api.v1.patients import bp as patients_bp
     from app.api.v1.doctors import bp as doctors_bp
     from app.api.v1.vitals import bp as vitals_bp
+    from app.api.v1.appointments import bp as appointments_bp
+    from app.api.v1.telemedicine import bp as telemedicine_bp
 
     app.register_blueprint(health_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(patients_bp)
     app.register_blueprint(doctors_bp)
     app.register_blueprint(vitals_bp)
+    app.register_blueprint(appointments_bp)
+    app.register_blueprint(telemedicine_bp)
 
 
 def _register_error_handlers(app: Flask) -> None:
