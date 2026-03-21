@@ -1,7 +1,7 @@
 """Unit tests for appointment and telemedicine services."""
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -78,8 +78,8 @@ def other_patient(db):
 
 @pytest.fixture
 def future_time():
-    """Return a naive datetime 2 days in the future at 10:00 AM."""
-    return (datetime.utcnow() + timedelta(days=2)).replace(
+    """Return a timezone-aware datetime 2 days in the future at 10:00 AM."""
+    return (datetime.now(timezone.utc) + timedelta(days=2)).replace(
         hour=10, minute=0, second=0, microsecond=0
     )
 
