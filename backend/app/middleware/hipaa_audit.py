@@ -7,7 +7,7 @@ Every endpoint that accesses Protected Health Information MUST use the
 from functools import wraps
 from typing import Callable
 
-from flask import request, g
+from flask import request
 from flask_jwt_extended import get_jwt_identity, get_jwt
 
 
@@ -44,7 +44,7 @@ def audit_phi_access(resource_type: str, action: str) -> Callable:
 
             # Determine status code from response
             if isinstance(result, tuple):
-                response_body, status_code = result[0], result[1]
+                status_code = result[1]
             else:
                 status_code = 200
 

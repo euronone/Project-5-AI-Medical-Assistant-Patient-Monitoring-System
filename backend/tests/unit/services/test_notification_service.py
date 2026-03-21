@@ -149,7 +149,6 @@ class TestGetUserNotifications:
 
     def test_unread_only_filter(self, db, notification_service, user):
         """Filtering by unread_only returns only unread notifications."""
-        # Create 2 notifications, mark 1 as read
         for i in range(2):
             notification_service.create_notification(CreateNotificationRequest(
                 user_id=str(user.id), type="alert", title=f"Alert {i}", message=f"Msg {i}",

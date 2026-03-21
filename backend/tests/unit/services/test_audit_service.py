@@ -237,7 +237,6 @@ class TestQueryLogs:
 
         results = audit_service.query_logs()
         assert len(results) == 3
-        # Most recent first
         for i in range(len(results) - 1):
             assert results[i].created_at >= results[i + 1].created_at
 
@@ -279,7 +278,7 @@ class TestExportCsv:
 
         csv_output = audit_service.export_csv()
         lines = csv_output.strip().split("\n")
-        assert len(lines) == 2  # Header + 1 data row
+        assert len(lines) == 2
         assert "id" in lines[0]
         assert "user_id" in lines[0]
         assert "action" in lines[0]
@@ -288,4 +287,4 @@ class TestExportCsv:
         """CSV export with no logs returns only the header."""
         csv_output = audit_service.export_csv()
         lines = csv_output.strip().split("\n")
-        assert len(lines) == 1  # Header only
+        assert len(lines) == 1
