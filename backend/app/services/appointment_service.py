@@ -29,8 +29,8 @@ VALID_STATUS_TRANSITIONS = {
 
 
 def _utcnow() -> datetime:
-    """Return current UTC time as a naive datetime for SQLite compatibility."""
-    return datetime.utcnow()
+    """Return current UTC time as a timezone-aware datetime."""
+    return datetime.now(timezone.utc)
 
 
 class AppointmentService:

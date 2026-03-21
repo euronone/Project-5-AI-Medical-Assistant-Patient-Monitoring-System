@@ -1,7 +1,7 @@
 """Telemedicine service — business logic for video consultation sessions."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 import structlog
 from sqlalchemy import select
@@ -18,8 +18,8 @@ logger = structlog.get_logger(__name__)
 
 
 def _utcnow() -> datetime:
-    """Return current UTC time as a naive datetime for SQLite compatibility."""
-    return datetime.utcnow()
+    """Return current UTC time as a timezone-aware datetime."""
+    return datetime.now(timezone.utc)
 
 
 class TelemedicineService:
