@@ -86,7 +86,7 @@ class TestCreateProfile:
         assert result.height_cm == 165.0
         assert result.weight_kg == 60.0
 
-    def test_create_profile_user_not_found(self, service):
+    def test_create_profile_user_not_found(self, service, db):
         data = CreatePatientProfileRequest(date_of_birth=date(1990, 1, 1))
         with pytest.raises(ValueError, match="User not found"):
             service.create_profile(str(uuid.uuid4()), data)
@@ -110,7 +110,7 @@ class TestGetProfile:
         assert result.user_id == str(patient_user.id)
         assert result.gender == "female"
 
-    def test_get_profile_not_found(self, service):
+    def test_get_profile_not_found(self, service, db):
         with pytest.raises(ValueError, match="not found"):
             service.get_profile_by_user_id(str(uuid.uuid4()))
 
@@ -124,7 +124,7 @@ class TestUpdateProfile:
         assert result.weight_kg == 65.0
         assert result.blood_type == "B+"
 
-    def test_update_profile_not_found(self, service):
+    def test_update_profile_not_found(self, service, db):
         data = UpdatePatientProfileRequest(weight_kg=65.0)
         with pytest.raises(ValueError, match="not found"):
             service.update_profile(str(uuid.uuid4()), data)
