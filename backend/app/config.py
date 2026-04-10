@@ -36,10 +36,10 @@ class BaseConfig:
     CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1")
     CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/2")
 
-    # EURI API Gateway (OpenAI-compatible) — https://euron.one/euri
+    # EURI API Gateway (OpenAI-compatible SDK) — https://euron.one/euri
+    # Server-side AI (report analysis, embeddings, etc.) uses only these; do not use OPENAI_API_KEY.
+    EURI_API_KEY = os.getenv("EURI_API_KEY", "")
     EURI_BASE_URL = os.getenv("EURI_BASE_URL", "https://api.euron.one/api/v1/euri")
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", os.getenv("EURI_API_KEY", ""))
-    OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", os.getenv("EURI_BASE_URL", "https://api.euron.one/api/v1/euri"))
     OPENAI_ORG_ID = os.getenv("OPENAI_ORG_ID", "")
     OPENAI_MODEL_PRIMARY = os.getenv("OPENAI_MODEL_PRIMARY", "gpt-4o-mini")
     OPENAI_MODEL_FAST = os.getenv("OPENAI_MODEL_FAST", "gpt-4o-mini")

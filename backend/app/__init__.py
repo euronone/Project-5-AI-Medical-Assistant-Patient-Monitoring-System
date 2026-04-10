@@ -24,6 +24,9 @@ def create_app(config_name: str | None = None) -> Flask:
     app = Flask(__name__)
     app.config.from_object(config_map[config_name])
 
+    # SQLite: allow Flask-SQLAlchemy sessions from background threads (report AI analysis).
+    _configure_sqlite_engine(app)
+
     # Initialize extensions
     _register_extensions(app)
 
@@ -41,12 +44,33 @@ def create_app(config_name: str | None = None) -> Flask:
     return app
 
 
+def _configure_sqlite_engine(app: Flask) -> None:
+    """Merge connect_args so worker threads can use the same SQLite file as the main thread."""
+    uri = app.config.get("SQLALCHEMY_DATABASE_URI") or ""
+    if not isinstance(uri, str) or not uri.startswith("sqlite"):
+        return
+    opts = dict(app.config.get("SQLALCHEMY_ENGINE_OPTIONS") or {})
+    connect_args = dict(opts.get("connect_args") or {})
+    connect_args.setdefault("check_same_thread", False)
+    opts["connect_args"] = connect_args
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = opts
+
+
 def _register_extensions(app: Flask) -> None:
     """Initialize Flask extensions with the app instance."""
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
-    cors.init_app(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+    cors.init_app(
+        app,
+        resources={
+            r"/api/*": {
+                "origins": "*",
+                "allow_headers": ["Content-Type", "Authorization", "X-Euri-Api-Key"],
+            }
+        },
+        supports_credentials=True,
+    )
     socketio.init_app(app, cors_allowed_origins="*")
     limiter.init_app(app)
 

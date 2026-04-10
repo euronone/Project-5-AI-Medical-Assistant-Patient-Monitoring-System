@@ -24,6 +24,7 @@ from app.schemas.appointment_schema import (
     UpdateAppointmentRequest,
 )
 from app.services.appointment_service import appointment_service
+from app.services.email_service import get_email_provider_status
 
 bp = Blueprint("appointments", __name__, url_prefix="/api/v1/appointments")
 
@@ -92,11 +93,20 @@ def create_appointment():
         }), 403
 
     try:
-        appointment = appointment_service.create_appointment(data, created_by=current_user_id)
+        appointment, patient_sent, doctor_sent = appointment_service.create_appointment(
+            data, created_by=current_user_id
+        )
     except ValueError as e:
-        return jsonify({"error": {"code": "CONFLICT", "message": str(e)}}), 409
+        msg = str(e)
+        if "not available" in msg.lower():
+            return jsonify({"error": {"code": "BAD_REQUEST", "message": msg}}), 400
+        return jsonify({"error": {"code": "CONFLICT", "message": msg}}), 409
 
-    return jsonify(appointment.model_dump(mode="json")), 201
+    body = appointment.model_dump(mode="json")
+    body["confirmation_emails"] = {"patient": patient_sent, "doctor": doctor_sent}
+    body["confirmation_email_sent"] = patient_sent
+    body["email_provider"] = get_email_provider_status()
+    return jsonify(body), 201
 
 
 @bp.route("/<appointment_id>", methods=["GET"])

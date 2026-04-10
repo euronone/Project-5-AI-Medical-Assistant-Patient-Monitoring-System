@@ -142,7 +142,7 @@ class TestCreateAppointment:
 
     def test_create_appointment_success(self, appt_service, create_request, patient):
         """Creating an appointment returns 'scheduled' status."""
-        result = appt_service.create_appointment(create_request, created_by=patient.id)
+        result, _p, _d = appt_service.create_appointment(create_request, created_by=patient.id)
         assert result.id is not None
         assert result.patient_id == str(patient.id)
         assert result.status == "scheduled"
@@ -169,7 +169,7 @@ class TestCreateAppointment:
             duration_minutes=30,
             reason="Video consultation",
         )
-        result = appt_service.create_appointment(req, created_by=patient.id)
+        result, _p, _d = appt_service.create_appointment(req, created_by=patient.id)
         assert result.appointment_type == "telemedicine"
 
 

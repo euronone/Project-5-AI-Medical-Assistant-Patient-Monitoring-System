@@ -6,6 +6,9 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json* ./
 
+# Skip Cypress binary download in Docker (not needed to build/run the app; avoids flaky large downloads)
+ENV CYPRESS_INSTALL_BINARY=0
+
 # Install all dependencies (including dev for build)
 RUN npm install
 

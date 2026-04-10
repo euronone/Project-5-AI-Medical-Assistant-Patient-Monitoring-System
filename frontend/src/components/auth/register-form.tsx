@@ -6,13 +6,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { registerSchema, type RegisterFormData } from "@/lib/validators";
 import apiClient from "@/lib/api-client";
-import type { RegisterResponse, AuthError, UserRole } from "@/types/auth";
+import type { RegisterResponse, UserRole } from "@/types/auth";
 
-const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
+const ROLE_OPTIONS: { value: Exclude<UserRole, "admin">; label: string }[] = [
   { value: "patient", label: "Patient" },
   { value: "doctor", label: "Doctor" },
   { value: "nurse", label: "Nurse" },
-  { value: "admin", label: "Administrator" },
 ];
 
 export function RegisterForm() {
@@ -37,10 +36,10 @@ export function RegisterForm() {
       await apiClient.post<RegisterResponse>("/auth/register", {
         email: data.email,
         password: data.password,
-        firstName: data.firstName,
-        lastName: data.lastName,
+        first_name: data.firstName,
+        last_name: data.lastName,
         role: data.role,
-        phone: data.phone || undefined,
+        phone: data.phone?.trim() ? data.phone.trim() : undefined,
       });
 
       router.push("/login?registered=true");
@@ -53,9 +52,21 @@ export function RegisterForm() {
         typeof error.response === "object" &&
         "data" in error.response
       ) {
-        const authError = (error.response as { data: AuthError }).data;
+        const body = (error.response as { data: unknown }).data;
+        let message: string | null = null;
+        if (body && typeof body === "object" && "error" in body) {
+          const err = (body as { error: Record<string, unknown> }).error;
+          if (typeof err.message === "string") {
+            message = err.message;
+          } else if (Array.isArray(err.details)) {
+            message = (err.details as { msg?: string }[])
+              .map((d) => d.msg)
+              .filter(Boolean)
+              .join(" ");
+          }
+        }
         setServerError(
-          authError.message ?? "Registration failed. Please try again."
+          message ?? "Registration failed. Please try again."
         );
       } else {
         setServerError("An unexpected error occurred. Please try again.");

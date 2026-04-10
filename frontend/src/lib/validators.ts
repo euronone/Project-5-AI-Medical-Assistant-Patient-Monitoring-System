@@ -32,7 +32,7 @@ export const registerSchema = z
       .regex(/^\+?[1-9]\d{1,14}$/, "Please enter a valid phone number")
       .optional()
       .or(z.literal("")),
-    role: z.enum(["patient", "doctor", "nurse", "admin"], {
+    role: z.enum(["patient", "doctor", "nurse"], {
       required_error: "Please select a role",
     }),
     password: z

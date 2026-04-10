@@ -182,7 +182,7 @@ class TestReportServiceCreate:
             result = service.get_patient_reports(uuid.uuid4())
             assert result == []
 
-    def test_trigger_analysis_sets_processing(self, app, db):
+    def test_trigger_analysis_completes_with_fallback_without_api_key(self, app, db):
         with app.app_context():
             from app.models.user import User
 
@@ -196,7 +196,9 @@ class TestReportServiceCreate:
             created = service.create_report(user.id, data, created_by=user.id)
             result = service.trigger_analysis(uuid.UUID(created.id))
             assert result is not None
-            assert result.status == "processing"
+            assert result.status == "completed"
+            assert result.ai_summary is not None
+            assert "API key" in result.ai_summary or len(result.ai_summary) > 10
 
 
 class TestLabValueService:

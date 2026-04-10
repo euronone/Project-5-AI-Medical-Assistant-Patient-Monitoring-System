@@ -4,6 +4,8 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from openai import OpenAI
 
+from app.config import BaseConfig
+
 bp = Blueprint("chat", __name__, url_prefix="/api/v1/chat")
 
 
@@ -22,16 +24,15 @@ def send_message():
     user_message = data["message"]
     conversation_history = data.get("history", [])
 
-    # Use client-provided key or fall back to server key
+    # Use client-provided key or fall back to server EURI_API_KEY
     api_key = request.headers.get("X-Euri-Api-Key", "")
     if not api_key:
-        from app.config import BaseConfig
-        api_key = BaseConfig.OPENAI_API_KEY
+        api_key = BaseConfig.EURI_API_KEY
 
     if not api_key:
         return jsonify({"error": {"code": "NO_API_KEY", "message": "No EURI API key configured. Click 'Set API Key' to add yours."}}), 400
 
-    base_url = "https://api.euron.one/api/v1/euri"
+    base_url = (BaseConfig.EURI_BASE_URL or "").strip() or "https://api.euron.one/api/v1/euri"
 
     try:
         client = OpenAI(api_key=api_key, base_url=base_url, timeout=30)

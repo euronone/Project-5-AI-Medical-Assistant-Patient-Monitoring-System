@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from app.extensions import db
 from app.models.appointment import Appointment
+from app.models.user import User
 from app.schemas.appointment_schema import (
     AppointmentResponse,
     CancelAppointmentRequest,
@@ -38,7 +39,7 @@ class AppointmentService:
 
     def create_appointment(
         self, data: CreateAppointmentRequest, created_by: uuid.UUID
-    ) -> AppointmentResponse:
+    ) -> tuple[AppointmentResponse, bool]:
         """Create a new appointment.
 
         Args:
@@ -46,13 +47,17 @@ class AppointmentService:
             created_by: UUID of the user creating the appointment.
 
         Returns:
-            AppointmentResponse with the created appointment.
+            Tuple of (AppointmentResponse, patient_email_sent, doctor_email_sent).
 
         Raises:
             ValueError: If there's a scheduling conflict.
         """
         patient_id = uuid.UUID(data.patient_id)
         doctor_id = uuid.UUID(data.doctor_id)
+
+        doctor_user = db.session.get(User, doctor_id)
+        if not doctor_user or doctor_user.role not in ("doctor", "nurse"):
+            raise ValueError("Selected provider is not available for booking")
 
         conflict = self._check_scheduling_conflict(
             doctor_id=doctor_id,
@@ -84,7 +89,32 @@ class AppointmentService:
             appointment_type=data.appointment_type,
         )
 
-        return self._to_response(appointment)
+        patient_sent = False
+        doctor_sent = False
+        try:
+            patient_user = db.session.get(User, patient_id)
+            from app.services.email_service import send_appointment_confirmation_emails
+
+            doctor_name = doctor_user.full_name
+            patient_name = patient_user.full_name if patient_user else "Patient"
+            patient_sent, doctor_sent = send_appointment_confirmation_emails(
+                patient_email=patient_user.email if patient_user else None,
+                patient_display_name=patient_name,
+                doctor_email=doctor_user.email,
+                doctor_display_name=doctor_name,
+                scheduled_at=appointment.scheduled_at,
+                appointment_type=data.appointment_type,
+                appointment_id=str(appointment.id),
+                duration_minutes=appointment.duration_minutes,
+            )
+        except Exception as exc:
+            logger.warning(
+                "appointment_confirmation_email_failed",
+                appointment_id=str(appointment.id),
+                error=str(exc),
+            )
+
+        return self._to_response(appointment), patient_sent, doctor_sent
 
     def get_appointment(self, appointment_id: uuid.UUID) -> AppointmentResponse | None:
         """Get a single appointment by ID.
@@ -277,6 +307,8 @@ class AppointmentService:
         Returns:
             List of available time slot dicts with start and end times.
         """
+        if date.tzinfo is None:
+            date = date.replace(tzinfo=timezone.utc)
         day_start = date.replace(hour=9, minute=0, second=0, microsecond=0)
         day_end = date.replace(hour=17, minute=0, second=0, microsecond=0)
 

@@ -32,8 +32,6 @@ services:
         sync: false  # Set manually in Render dashboard
       - key: EURI_BASE_URL
         value: https://api.euron.one/api/v1/euri
-      - key: OPENAI_API_KEY
-        sync: false  # Same as EURI_API_KEY
       - key: OPENAI_MODEL_PRIMARY
         value: gpt-4o-mini
       - key: OPENAI_MODEL_FAST

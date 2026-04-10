@@ -3,6 +3,7 @@
 import uuid
 
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 
 from app.extensions import db
 from app.models.doctor import DoctorProfile
@@ -116,29 +117,39 @@ class DoctorService:
         Returns:
             List of DoctorProfileResponse.
         """
-        stmt = select(DoctorProfile)
+        stmt = (
+            select(DoctorProfile)
+            .options(joinedload(DoctorProfile.user))
+            .order_by(DoctorProfile.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
         if specialization:
             stmt = stmt.where(DoctorProfile.specialization.ilike(f"%{specialization}%"))
-        stmt = stmt.order_by(DoctorProfile.created_at.desc()).limit(limit).offset(offset)
 
-        profiles = db.session.execute(stmt).scalars().all()
+        profiles = db.session.execute(stmt).unique().scalars().all()
         return [self._to_response(p) for p in profiles]
 
     def _get_profile_or_raise(self, user_id: str) -> DoctorProfile:
         """Get doctor profile by user_id or raise ValueError."""
-        stmt = select(DoctorProfile).where(
-            DoctorProfile.user_id == uuid.UUID(user_id)
+        stmt = (
+            select(DoctorProfile)
+            .options(joinedload(DoctorProfile.user))
+            .where(DoctorProfile.user_id == uuid.UUID(user_id))
         )
-        profile = db.session.execute(stmt).scalar_one_or_none()
+        profile = db.session.execute(stmt).unique().scalar_one_or_none()
         if not profile:
             raise ValueError("Doctor profile not found")
         return profile
 
     @staticmethod
     def _to_response(profile: DoctorProfile) -> DoctorProfileResponse:
+        user = profile.user
         return DoctorProfileResponse(
             id=str(profile.id),
             user_id=str(profile.user_id),
+            first_name=user.first_name if user else None,
+            last_name=user.last_name if user else None,
             specialization=profile.specialization,
             license_number=profile.license_number,
             license_state=profile.license_state,

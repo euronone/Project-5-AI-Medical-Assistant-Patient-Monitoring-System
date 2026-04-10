@@ -77,7 +77,7 @@ class OpenAIClient:
             default_model: Default model to use. Falls back to config if not provided.
             timeout: Request timeout in seconds.
         """
-        self._api_key = api_key or BaseConfig.OPENAI_API_KEY
+        self._api_key = api_key or BaseConfig.EURI_API_KEY
         self._org_id = org_id or BaseConfig.OPENAI_ORG_ID
         self._default_model = default_model or BaseConfig.OPENAI_MODEL_PRIMARY
         self._timeout = timeout or self.DEFAULT_TIMEOUT
@@ -85,8 +85,7 @@ class OpenAIClient:
         if not self._api_key:
             logger.warning("openai_client_no_api_key")
 
-        # Use EURI/OpenAI-compatible API gateway if configured
-        base_url = BaseConfig.OPENAI_BASE_URL or BaseConfig.EURI_BASE_URL
+        base_url = (BaseConfig.EURI_BASE_URL or "").strip() or "https://api.euron.one/api/v1/euri"
         client_kwargs: dict[str, Any] = {
             "api_key": self._api_key,
             "timeout": self._timeout,
@@ -106,6 +105,7 @@ class OpenAIClient:
         temperature: float = 0.3,
         max_tokens: int = 4096,
         response_format: dict[str, str] | None = None,
+        request_timeout: float | None = None,
     ) -> OpenAIResponse:
         """Send a chat completion request with retry logic.
 
@@ -137,6 +137,8 @@ class OpenAIClient:
             kwargs["tool_choice"] = "auto"
         if response_format:
             kwargs["response_format"] = response_format
+        if request_timeout is not None:
+            kwargs["timeout"] = request_timeout
 
         return self._retry_request(
             operation="chat_completion",
@@ -263,11 +265,16 @@ class OpenAIClient:
                     },
                 })
 
-        usage = TokenUsage(
-            prompt_tokens=response.usage.prompt_tokens,
-            completion_tokens=response.usage.completion_tokens,
-            total_tokens=response.usage.total_tokens,
-        )
+        # Some OpenAI-compatible gateways omit usage or return None
+        u = getattr(response, "usage", None)
+        if u is None:
+            usage = TokenUsage()
+        else:
+            usage = TokenUsage(
+                prompt_tokens=getattr(u, "prompt_tokens", 0) or 0,
+                completion_tokens=getattr(u, "completion_tokens", 0) or 0,
+                total_tokens=getattr(u, "total_tokens", 0) or 0,
+            )
 
         return OpenAIResponse(
             content=message.content,

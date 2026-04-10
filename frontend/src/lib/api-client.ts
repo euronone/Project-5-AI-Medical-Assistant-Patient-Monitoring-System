@@ -13,8 +13,8 @@ function getApiBaseUrl(): string {
       return "https://medassist-backend1.onrender.com/api/v1";
     }
   }
-  // Local development fallback
-  return "http://localhost:5055/api/v1";
+  // Local development fallback (Flask default)
+  return "http://localhost:5000/api/v1";
 }
 
 const API_BASE_URL = getApiBaseUrl();
@@ -33,6 +33,14 @@ apiClient.interceptors.request.use((config) => {
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    const euriKey = localStorage.getItem("euriApiKey");
+    if (euriKey?.trim()) {
+      config.headers["X-Euri-Api-Key"] = euriKey.trim();
+    }
+  }
+  // Let the browser set multipart boundary for file uploads
+  if (config.data instanceof FormData) {
+    delete config.headers["Content-Type"];
   }
   return config;
 });

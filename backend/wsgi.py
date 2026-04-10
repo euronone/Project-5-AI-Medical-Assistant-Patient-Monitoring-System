@@ -31,5 +31,28 @@ with app.app_context():
             db.session.rollback()
             print(f"Seed error (non-fatal): {e}")
 
+    # Demo doctor profile so patients can book against doctor@demo.dev in dev
+    try:
+        from sqlalchemy import select
+
+        from app.models.doctor import DoctorProfile
+
+        doc = db.session.execute(select(User).where(User.email == "doctor@demo.dev")).scalar_one_or_none()
+        if doc and db.session.execute(
+            select(DoctorProfile).where(DoctorProfile.user_id == doc.id)
+        ).scalar_one_or_none() is None:
+            db.session.add(
+                DoctorProfile(
+                    user_id=doc.id,
+                    specialization="Family Medicine",
+                    license_number="DEMO-LIC-001",
+                )
+            )
+            db.session.commit()
+            print("Seeded demo doctor profile for appointment booking.")
+    except Exception as e:
+        db.session.rollback()
+        print(f"Doctor profile seed (non-fatal): {e}")
+
 if __name__ == "__main__":
     app.run()
